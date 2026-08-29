@@ -1,0 +1,6 @@
+- insert:
+    - id: dsh-wsl-notify
+      name: dsh-wsl-notify
+      config:
+        timeoutMs: 30000
+        maxLen: 500
