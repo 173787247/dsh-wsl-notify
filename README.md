@@ -17,7 +17,7 @@ flowchart LR
   agent["dsh agent"] --> tool["win_notify"] --> win["Windows message box"]
 ```
 
-Suite diagram and version snapshot: [dsh-wsl-kit](https://github.com/173787247/dsh-wsl-kit#how-the-pieces-fit). This plugin is **0.1.0** (github). Do not copy that matrix into this README.
+Suite diagram and version snapshot: [dsh-wsl-kit](https://github.com/173787247/dsh-wsl-kit#how-the-pieces-fit). This plugin is **0.1.1** (github). Do not copy that matrix into this README.
 
 
 ---
@@ -25,7 +25,7 @@ Suite diagram and version snapshot: [dsh-wsl-kit](https://github.com/173787247/d
 
 | Field | Value |
 |-------|-------|
-| **Plugin** | `dsh-wsl-notify` **0.1.0** |
+| **Plugin** | `dsh-wsl-notify` **0.1.1** |
 | **Minimum dsh** | ≥ **0.1.2** (web UI one-shot `?token=` on Windows relay `:3081`) |
 | **Latest verified** | See [dsh-wsl-kit Compatibility](https://github.com/173787247/dsh-wsl-kit#compatibility-2026-09) (currently **`0.1.7-alpha.2`**) — single source of truth for the suite |
 | **Kit set** | `github` / `full` |
@@ -38,14 +38,15 @@ Suite floor versions: kit [`check-plugin-versions.sh`](https://github.com/173787
 
 You leave a long agent run in the background; when it finishes, a Windows popup is easier to notice than a tab title.
 
-**Note:** MessageBox is **blocking** until dismissed. Keep title/body short; no secrets. For non-blocking toasts you can later swap the implementation; this release prioritizes reliability without extra Windows modules.
+**Note:** `messagebox` is **blocking** until dismissed. `toast` uses a tray BalloonTip (non-blocking); if it fails, falls back to MessageBox. Keep title/body short; no secrets.
 
 ## Tool
 
 | Arg | Default | Meaning |
 |-----|---------|---------|
-| `title` | `DSH` | Window title (`maxLen`) |
+| `title` | `DSH` | Window / balloon title (`maxLen`) |
 | `body` | `Task finished.` | Message body |
+| `mode` | `messagebox` | `toast` (BalloonTip) or `messagebox` |
 
 ## Install
 

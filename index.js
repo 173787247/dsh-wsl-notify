@@ -1,5 +1,11 @@
 import { detectWsl, runPowerShell } from "./lib/wsl-host.js";
-import { buildNotifyScript, encodeTitleBody, formatNotifyResult } from "./lib/notify.js";
+import {
+  buildNotifyScript,
+  buildToastScript,
+  encodeTitleBody,
+  formatNotifyResult,
+  normalizeMode,
+} from "./lib/notify.js";
 
 export const name = "dsh-wsl-notify";
 export const inject = ["tools", "systemPrompt"];
@@ -12,18 +18,23 @@ export function apply(ctx, config = {}) {
   ctx.systemPrompt.section({
     name: "tool:win_notify",
     order: 123,
-    text: "Use win_notify to show a short Windows MessageBox when a long WSL task finishes. Keep title/body brief; no secrets.",
+    text: "Use win_notify to show a short Windows notification when a long WSL task finishes. mode=messagebox (default, blocking) or mode=toast (BalloonTip, non-blocking; falls back to MessageBox). Keep title/body brief; no secrets.",
   });
 
   ctx.tools.register({
     name: "win_notify",
-    description: "Show a short Windows MessageBox notification from WSL (blocking until dismissed).",
+    description: "Show a Windows notification from WSL: MessageBox (default, blocking) or toast BalloonTip (non-blocking).",
     parameters: {
       type: "object",
       additionalProperties: false,
       properties: {
-        title: { type: "string", description: "Window title (default DSH)." },
+        title: { type: "string", description: "Window / balloon title (default DSH)." },
         body: { type: "string", description: "Message body." },
+        mode: {
+          type: "string",
+          enum: ["toast", "messagebox"],
+          description: "toast = NotifyIcon BalloonTip (non-blocking); messagebox = blocking MessageBox (default).",
+        },
       },
     },
     output: {
@@ -33,6 +44,7 @@ export function apply(ctx, config = {}) {
         properties: {
           ok: { type: "boolean" },
           title: { type: "string" },
+          mode: { type: "string" },
           error: { type: "string" },
         },
       },
@@ -44,12 +56,22 @@ export function apply(ctx, config = {}) {
       if (!wsl) return { ok: false, error: "not running in WSL" };
       const title = String(args?.title ?? "DSH").slice(0, maxLen);
       const body = String(args?.body ?? "Task finished.").slice(0, maxLen);
+      const mode = normalizeMode(args?.mode);
+      const { titleB64, bodyB64 } = encodeTitleBody(title, body);
       try {
-        const { titleB64, bodyB64 } = encodeTitleBody(title, body);
+        if (mode === "toast") {
+          try {
+            await runPowerShell(buildToastScript(titleB64, bodyB64), { timeoutMs });
+            return { ok: true, title, mode: "toast" };
+          } catch {
+            await runPowerShell(buildNotifyScript(titleB64, bodyB64), { timeoutMs });
+            return { ok: true, title, mode: "messagebox" };
+          }
+        }
         await runPowerShell(buildNotifyScript(titleB64, bodyB64), { timeoutMs });
-        return { ok: true, title };
+        return { ok: true, title, mode: "messagebox" };
       } catch (err) {
-        return { ok: false, title, error: err instanceof Error ? err.message : String(err) };
+        return { ok: false, title, mode, error: err instanceof Error ? err.message : String(err) };
       }
     },
     presentCall: () => ({ card: "generic", title: "Windows notify" }),
